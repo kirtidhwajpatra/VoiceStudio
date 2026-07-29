@@ -1,0 +1,23 @@
+# CODEOWNERS: who gets auto-requested for review on which paths.
+#
+# Right now you are solo, so everything routes to you. That looks pointless --
+# it is not. It means the day someone else commits, the routing already exists
+# and nobody has to remember to set it up. It also makes the "these areas are
+# sensitive" judgement explicit and reviewable.
+
+# Default owner for everything
+*                       @kirtidhwajpatra
+
+# Audio is the product. Nothing here changes without an owner's eyes on it.
+/HUMMI/AudioEngine/     @kirtidhwajpatra
+/HUMMITests/            @kirtidhwajpatra
+
+# Release and CI machinery: a bad change here can ship a broken build to users
+# or leak a credential.
+/.github/               @kirtidhwajpatra
+/fastlane/              @kirtidhwajpatra
+/Gemfile                @kirtidhwajpatra
+/Gemfile.lock           @kirtidhwajpatra
+
+# Project file conflicts are subtle and easy to merge wrongly.
+/HUMMI.xcodeproj/       @kirtidhwajpatra

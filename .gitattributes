@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------
+# Normalize line endings so a Windows/Linux CI runner never sees phantom diffs.
+# ---------------------------------------------------------------------------
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------------
+# project.pbxproj is Xcode's project database. It is technically text, but it
+# is machine-generated and merges catastrophically.
+#
+# `merge=union` tells git: when both sides added lines, keep BOTH instead of
+# emitting conflict markers. This resolves the overwhelmingly common case --
+# two branches each added new files -- automatically and correctly.
+#
+# It is not magic: if two branches edit the SAME build setting, union merge
+# keeps both lines and Xcode will complain. That is your signal to open the
+# project and fix it by hand. Always open Xcode after a pbxproj merge.
+# ---------------------------------------------------------------------------
+*.pbxproj merge=union linguist-generated=true
+*.pbxproj -diff
+
+# ---------------------------------------------------------------------------
+# Binary assets: never try to diff or merge these.
+# ---------------------------------------------------------------------------
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.pdf    binary
+*.m4a    binary
+*.wav    binary
+*.aiff   binary
+*.mp3    binary
+*.mlmodel   binary
+*.mlmodelc  binary
+*.mlpackage binary
+
+# ---------------------------------------------------------------------------
+# Keep generated/vendored files out of GitHub's language stats and out of
+# "Files changed" by default in PRs, so reviewers see real code.
+# ---------------------------------------------------------------------------
+*.xcscheme  linguist-generated=true
+Package.resolved linguist-generated=true

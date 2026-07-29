@@ -1,0 +1,219 @@
+# =============================================================================
+# HUMMI Fastfile
+#
+# DESIGN PRINCIPLE: every lane runs identically on your Mac and on CI.
+# If a lane needs a human, it is not a lane -- it is a runbook step.
+#
+# Lanes:
+#   fastlane test     - unit tests, no signing, no network. Runs on every PR.
+#   fastlane beta     - archive + upload to TestFlight. Runs on merge to main.
+#   fastlane release  - promote a TestFlight build to App Store review. Runs on a v* tag.
+#   fastlane certs    - one-time / occasional signing asset management (local only).
+# =============================================================================
+
+default_platform(:ios)
+
+XCODEPROJ = "HUMMI.xcodeproj"
+SCHEME    = "HUMMI"
+APP_ID    = "com.kirtidhwaj.voicestudio"
+
+platform :ios do
+  before_all do
+    # setup_ci creates a temporary, throwaway keychain on the runner and makes
+    # it the default. Without this, `match` tries to write into the runner's
+    # login keychain, which is locked, and fails with an opaque security error.
+    # It is a no-op locally, so the lanes stay symmetrical.
+    setup_ci if is_ci
+  end
+
+  # ---------------------------------------------------------------------------
+  # TEST - the gate every pull request must pass
+  # ---------------------------------------------------------------------------
+  desc "Build and run the unit test suite"
+  lane :test do
+    run_tests(
+      project: XCODEPROJ,
+      scheme: SCHEME,
+      # A simulator destination means NO code signing is involved, so this lane
+      # needs zero secrets. That is why it is safe to run on PRs from forks.
+      devices: [ENV.fetch("TEST_DEVICE", "iPhone 17")],
+      result_bundle: true,
+      output_directory: "fastlane/test_output",
+      # Fail loudly on warnings-as-errors regressions rather than burying them.
+      xcargs: "-skipMacroValidation",
+      clean: false
+    )
+  end
+
+  # ---------------------------------------------------------------------------
+  # BETA - main is always shippable, so every merge produces a TestFlight build
+  # ---------------------------------------------------------------------------
+  desc "Archive and upload a build to TestFlight"
+  lane :beta do
+    key = asc_api_key
+
+    sync_signing
+
+    version = marketing_version
+    build   = next_build_number(key)
+
+    UI.important("Building HUMMI #{version} (#{build})")
+
+    build_archive(version: version, build: build)
+
+    upload_to_testflight(
+      api_key: key,
+      app_identifier: APP_ID,
+      # Do NOT block the CI job for ~10 minutes waiting on Apple's processing.
+      # The runner's job is to hand the binary over, not to babysit it.
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      changelog: changelog_from_git
+    )
+
+    UI.success("Uploaded #{version} (#{build}) to TestFlight")
+  end
+
+  # ---------------------------------------------------------------------------
+  # RELEASE - promote an already-tested TestFlight build to the App Store
+  #
+  # Note what this lane does NOT do: it does not build. The binary that goes to
+  # the App Store is the exact binary your testers already used. Rebuilding at
+  # release time means shipping something nobody has tested.
+  # ---------------------------------------------------------------------------
+  desc "Submit the latest TestFlight build for App Store review"
+  lane :release do
+    key = asc_api_key
+    version = ENV.fetch("RELEASE_VERSION") do
+      UI.user_error!("RELEASE_VERSION is required (set from the git tag, e.g. 1.1.0)")
+    end
+
+    build = latest_testflight_build_number(
+      api_key: key,
+      app_identifier: APP_ID,
+      version: version
+    )
+
+    UI.important("Submitting HUMMI #{version} (#{build}) for review")
+
+    deliver(
+      api_key: key,
+      app_identifier: APP_ID,
+      app_version: version,
+      build_number: build.to_s,
+      submit_for_review: true,
+      automatic_release: false,          # you press the button, not a robot
+      force: true,                       # skip the interactive HTML preview
+      skip_binary_upload: true,          # the binary is already in TestFlight
+      skip_screenshots: true,
+      skip_metadata: false,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false
+      }
+    )
+  end
+
+  # ---------------------------------------------------------------------------
+  # CERTS - local only. Never run this from CI.
+  # ---------------------------------------------------------------------------
+  desc "Create or repair App Store signing assets (run locally, not in CI)"
+  lane :certs do
+    UI.user_error!("Never run `certs` on CI -- it can revoke certificates") if is_ci
+    match(type: "appstore", readonly: false)
+  end
+end
+
+# =============================================================================
+# Helpers
+# =============================================================================
+
+# Builds an App Store Connect API token from three secrets.
+# key_content is base64 so the multi-line .p8 survives GitHub's secret storage,
+# which mangles raw newlines.
+def asc_api_key
+  app_store_connect_api_key(
+    key_id: ENV.fetch("ASC_KEY_ID"),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key_content: ENV.fetch("ASC_KEY_CONTENT"),
+    is_key_content_base64: true,
+    in_house: false
+  )
+end
+
+# Fetch signing assets. Falls back to Xcode automatic signing when match has not
+# been configured yet, so this repo is usable before you finish the match setup.
+def sync_signing
+  if ENV["MATCH_GIT_URL"].to_s.empty? && ENV["CI"] == "true"
+    UI.user_error!(
+      "MATCH_GIT_URL is not set. CI cannot sign without match. " \
+      "Follow the code signing section of docs/RELEASING.md."
+    )
+  end
+  return if ENV["MATCH_GIT_URL"].to_s.empty?
+
+  match(type: "appstore", readonly: is_ci)
+end
+
+# The marketing version (1.2.0) is the source of truth in the Xcode project.
+# It is bumped by a human, in a PR, because it is a product decision.
+def marketing_version
+  get_version_number(xcodeproj: XCODEPROJ, target: "HUMMI")
+end
+
+# The build number is NOT a product decision -- it is bookkeeping. Deriving it
+# from what TestFlight already has means:
+#   - it is always monotonic (Apple rejects duplicates)
+#   - CI never has to commit back to main just to bump a number
+#     (a commit-back would retrigger CI and, worse, break branch protection)
+def next_build_number(key)
+  latest = latest_testflight_build_number(
+    api_key: key,
+    app_identifier: APP_ID,
+    initial_build_number: 0
+  )
+  latest.to_i + 1
+rescue StandardError => e
+  UI.important("Could not read TestFlight build number (#{e.message}); falling back to CI run number")
+  ENV.fetch("GITHUB_RUN_NUMBER", "1").to_i
+end
+
+# Version and build are injected via xcargs rather than written into
+# project.pbxproj. The build is therefore a pure function of the commit --
+# nothing on disk changes, so there is nothing to commit back, and re-running
+# the same commit produces the same artifact.
+def build_archive(version:, build:)
+  build_app(
+    project: XCODEPROJ,
+    scheme: SCHEME,
+    configuration: "Release",
+    export_method: "app-store",
+    xcargs: [
+      "MARKETING_VERSION=#{version}",
+      "CURRENT_PROJECT_VERSION=#{build}",
+      "-allowProvisioningUpdates"
+    ].join(" "),
+    output_directory: "build",
+    output_name: "HUMMI.ipa",
+    include_symbols: true,
+    include_bitcode: false
+  )
+end
+
+# TestFlight "What to Test" notes, generated from commit subjects since the
+# last tag. Testers get real information without you writing it twice.
+def changelog_from_git
+  changelog_from_git_commits(
+    between: [last_git_tag_or_root, "HEAD"],
+    pretty: "- %s",
+    merge_commit_filtering: "exclude_merges"
+  )
+rescue StandardError
+  "Latest changes from main."
+end
+
+def last_git_tag_or_root
+  tag = sh("git describe --tags --abbrev=0 2>/dev/null || true").strip
+  tag.empty? ? sh("git rev-list --max-parents=0 HEAD").strip : tag
+end

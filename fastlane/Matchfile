@@ -1,0 +1,33 @@
+# fastlane match: code signing as code.
+#
+# THE PROBLEM MATCH SOLVES
+# Signing certificates and provisioning profiles live in your local keychain.
+# A fresh CI runner has neither. The naive fix -- export a .p12, base64 it into
+# a secret, import it -- works until the cert expires or you get a new Mac, and
+# then nobody remembers how it was done.
+#
+# match stores the certs and profiles, encrypted, in a PRIVATE git repo.
+# Every machine (your Mac, the runner, a future teammate) runs `match` and gets
+# byte-identical signing assets. Apple's revocation state and your repo stay in
+# sync. This is what Uber/Airbnb-scale iOS teams do.
+#
+# SETUP (one time, from your Mac -- see docs/RELEASING.md):
+#   1. Create a NEW PRIVATE GitHub repo, e.g. kirtidhwajpatra/hummi-certificates
+#   2. Set git_url below to that repo
+#   3. bundle exec fastlane match appstore
+#      -> it will create certs/profiles and push them encrypted
+#   4. Store the encryption passphrase as the MATCH_PASSWORD GitHub secret
+#
+# CI only ever reads (readonly: true is forced in the Fastfile), so a runner
+# can never mutate your signing state.
+
+git_url(ENV["MATCH_GIT_URL"] || "https://github.com/kirtidhwajpatra/hummi-certificates.git")
+storage_mode("git")
+
+type("appstore")
+
+app_identifier(["com.kirtidhwaj.voicestudio"])
+team_id("8XU7G4WPRA")
+
+# On CI we must never create or revoke certificates -- only fetch existing ones.
+readonly(ENV["CI"] == "true")

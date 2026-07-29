@@ -1,0 +1,18 @@
+# Known violations of the "no file over 300 lines" rule in CLAUDE.md.
+#
+# This is a DEBT LEDGER, not a permission slip. The CI ratchet allows these
+# files to stay at or below the recorded size and nothing more:
+#   - grow one of these  -> CI fails
+#   - add a new one      -> CI fails
+#   - shrink one         -> CI tells you to lower the number here
+#
+# The intended end state is an empty file. Delete a line whenever you split a
+# file below 300, and the ratchet tightens permanently.
+#
+# Format:  <max-lines> <path>
+
+630 HUMMI/Export/VideoExporter.swift
+570 HUMMI/Recording/RecordView.swift
+458 HUMMI/Enhancement/ResultViewModel.swift
+450 HUMMI/Enhancement/StudioScreen.swift
+381 HUMMI/AudioEngine/RealtimePreviewEngine.swift

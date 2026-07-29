@@ -1,0 +1,81 @@
+# =============================================================================
+# RELEASE - pushing a v* tag submits an existing TestFlight build for review.
+#
+# The tag is the release. Not a branch, not a button in a dashboard -- an
+# immutable pointer to the exact commit that shipped. Six months from now, when
+# a user reports a bug on 1.2.0, `git checkout v1.2.0` gives you that code
+# exactly, and nothing else does.
+#
+# This workflow deliberately does NOT build. It promotes the binary your beta
+# testers already used. A rebuild at release time -- different Xcode patch,
+# different dependency resolution -- ships something nobody tested.
+# =============================================================================
+name: Release (App Store)
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  group: app-store-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # needed to create the GitHub Release
+
+jobs:
+  submit:
+    name: Submit for App Store review
+    runs-on: macos-26
+    timeout-minutes: 30
+    # Gate this behind a protected environment with a required reviewer, so a
+    # stray `git push --tags` cannot submit to Apple by itself.
+    environment: app-store
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive version from tag
+        id: version
+        run: |
+          set -euo pipefail
+          # refs/tags/v1.2.0 -> 1.2.0
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION"
+
+          # The tag must agree with what is actually in the project, or you will
+          # tag v1.2.0 and ship a binary labelled 1.1.0. Catch it here.
+          PROJECT_VERSION=$(grep -m1 'MARKETING_VERSION' HUMMI.xcodeproj/project.pbxproj \
+            | sed -E 's/.*= ([^;]+);/\1/' | tr -d ' ')
+          if [ "$VERSION" != "$PROJECT_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match MARKETING_VERSION ($PROJECT_VERSION)."
+            exit 1
+          fi
+
+      - name: Set up Ruby and bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Submit to App Store review
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          FASTLANE_SKIP_UPDATE_CHECK: "1"
+        run: bundle exec fastlane ios release
+
+      # A GitHub Release turns the tag into human-readable release notes and
+      # gives non-engineers a place to see what shipped when.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: HUMMI ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false

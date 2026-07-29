@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Validate Conventional Commits locally, before the commit exists.
+#
+# Why a hook and not just a CI check: a CI failure on commit format costs you a
+# push, a wait, an amend, and a force-push. A hook costs you two seconds. Push
+# the feedback as early as it can possibly happen.
+#
+# Enabled by: git config core.hooksPath .githooks
+# Bypass in a genuine emergency with: git commit --no-verify
+set -euo pipefail
+
+MSG_FILE="$1"
+FIRST_LINE=$(head -1 "$MSG_FILE")
+
+# Let git's own generated messages through untouched.
+case "$FIRST_LINE" in
+  "Merge "*|"Revert "*|"fixup!"*|"squash!"*|"#"*) exit 0 ;;
+esac
+
+PATTERN='^(feat|fix|perf|refactor|test|docs|chore|ci|build|revert)(\([a-z0-9-]+\))?!?: .{1,72}$'
+
+if ! echo "$FIRST_LINE" | grep -qE "$PATTERN"; then
+  cat >&2 <<'EOF'
+
+  Commit message rejected.
+
+  Expected:  type(scope): imperative summary
+  Types:     feat fix perf refactor test docs chore ci build revert
+  Scopes:    audio enhance record export paywall ui ds settings ci
+  Summary:   imperative mood, <= 72 chars, no trailing period
+
+  Good:  feat(paywall): add StoreKit2 subscription tiers
+         fix(audio): remove tap on cancel to stop buffer underrun
+
+  Bad:   fixed stuff
+         Update ResultViewModel.swift
+         feat: Added subscriptions.
+
+  Bypass (emergencies only):  git commit --no-verify
+
+EOF
+  exit 1
+fi
+
+if echo "$FIRST_LINE" | grep -qE '\.$'; then
+  echo "  Commit summary must not end with a period." >&2
+  exit 1
+fi

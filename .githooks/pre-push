@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Last line of defence before code leaves your machine.
+#
+# Deliberately cheap -- it must not make pushing feel slow, or you will start
+# using --no-verify reflexively and the hook stops existing. The expensive
+# checks (build, tests) belong in CI, where they run in parallel and do not
+# block your terminal.
+set -euo pipefail
+
+REMOTE_REF_MAIN="refs/heads/main"
+
+while read -r local_ref _local_sha remote_ref _remote_sha; do
+  # 1. Never push directly to main. Everything goes through a PR.
+  if [ "$remote_ref" = "$REMOTE_REF_MAIN" ]; then
+    cat >&2 <<'EOF'
+
+  Direct push to main blocked.
+
+  main is protected: changes reach it through a pull request so CI can gate
+  them and there is a review record.
+
+      git switch -c feat/your-change
+      git push
+      gh pr create --fill
+
+EOF
+    exit 1
+  fi
+
+  # 2. Do not push commits that are obviously unfinished.
+  if [ "$local_ref" != "(delete)" ]; then
+    if git log --format='%s' "@{push}..HEAD" 2>/dev/null | grep -qiE '^(wip|tmp|temp|fixup!|squash!)'; then
+      echo "  WIP/fixup commits detected. Squash them first: git rebase -i origin/main" >&2
+      exit 1
+    fi
+  fi
+done
+
+# 3. Cheap credential scan. The cost of missing this is revoking a key and
+#    rewriting public history; the cost of running it is milliseconds.
+if git diff --cached --name-only 2>/dev/null | grep -Eqi '\.(p8|p12|mobileprovision|cer)$'; then
+  echo "  Signing credential staged. Never commit these." >&2
+  exit 1
+fi
+
+exit 0

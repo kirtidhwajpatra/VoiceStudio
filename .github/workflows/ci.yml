@@ -1,0 +1,106 @@
+# =============================================================================
+# CI - the gate on every pull request.
+#
+# This is the contract that lets you merge to main confidently and often, which
+# is the whole point of trunk-based development. If CI is slow or flaky, people
+# stop trusting it and start batching work into long-lived branches. Guard it.
+# =============================================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    # Docs-only changes should not burn macOS minutes (billed at 10x).
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "privacy.html"
+  # Also run on main itself. A PR is tested against its own merge commit, so a
+  # green PR can still break main if someone else merged in between.
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "privacy.html"
+  workflow_dispatch:
+
+# Cancel superseded runs. If you push three times in five minutes, only the
+# last commit needs to be tested -- the other two runs are wasted money.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: CI reads code, it does not write to the repo.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Cheap Linux checks first. These catch the majority of mistakes in seconds,
+  # for free, before any macOS minute is spent.
+  # ---------------------------------------------------------------------------
+  hygiene:
+    name: Repo hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Enforces CLAUDE.md mechanically: file length (ratcheted against a
+      # baseline), no force unwraps in audio code, no AVAudioEngine in Views,
+      # no committed credentials, shared scheme present.
+      - name: Enforce architecture rules
+        run: bash .github/scripts/check-architecture.sh
+
+  # ---------------------------------------------------------------------------
+  # The real build. macos-26 is required: IPHONEOS_DEPLOYMENT_TARGET is 26.0,
+  # so this needs the Xcode 26 toolchain.
+  # ---------------------------------------------------------------------------
+  build-test:
+    name: Build & test
+    needs: hygiene
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_26.app
+
+      - name: Show toolchain
+        run: xcodebuild -version && swift --version
+
+      # Caching SPM turns a cold ~4 min dependency resolve into seconds.
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Ensure xcbeautify
+        run: which xcbeautify || brew install xcbeautify
+
+      - name: Build and run tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project HUMMI.xcodeproj \
+            -scheme HUMMI \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -resultBundlePath TestResults.xcresult \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify --renderer github-actions
+
+      # Uploaded even on failure -- a red build with no artifact is a red build
+      # you have to reproduce locally, which defeats the purpose.
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: TestResults.xcresult
+          retention-days: 7

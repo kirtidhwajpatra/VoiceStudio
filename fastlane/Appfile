@@ -1,0 +1,13 @@
+# Identity of the app. Kept here so no lane has to hardcode it.
+app_identifier("com.kirtidhwaj.voicestudio")
+
+# Your Apple Developer Team ID (from HUMMI.xcodeproj DEVELOPMENT_TEAM).
+team_id("8XU7G4WPRA")
+
+# NOTE: There is deliberately NO apple_id / username here.
+# We authenticate exclusively with an App Store Connect API key (a .p8),
+# never with an Apple ID + password. Reasons:
+#   1. Apple ID login triggers 2FA, which cannot be answered by a CI runner.
+#   2. An API key is scoped and revocable without touching your Apple account.
+#   3. The same key works identically on your Mac and on the runner, so
+#      "works locally, breaks in CI" stops being a category of bug.

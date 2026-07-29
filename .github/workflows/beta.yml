@@ -1,0 +1,78 @@
+# =============================================================================
+# BETA - every merge to main becomes a TestFlight build.
+#
+# This is the single most important habit in trunk-based development. It makes
+# "main is always shippable" a verified fact rather than an aspiration, and it
+# means the release process is exercised dozens of times before you ever need
+# it under pressure. Release day should be boring.
+# =============================================================================
+name: Beta (TestFlight)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "privacy.html"
+  # Manual trigger for when you want a build without a new commit.
+  workflow_dispatch:
+
+# Never run two uploads at once: they would race for the same build number and
+# Apple would reject the loser. cancel-in-progress is FALSE here on purpose --
+# unlike CI, an in-flight upload should finish, not be killed.
+concurrency:
+  group: testflight-upload
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    name: Upload to TestFlight
+    runs-on: macos-26
+    timeout-minutes: 45
+    # A GitHub Environment lets you require approval and scopes the secrets to
+    # this job only. Configure it under Settings > Environments.
+    environment: testflight
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # fastlane generates the "What to Test" notes from git history, which
+          # needs the full history, not the default shallow clone.
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_26.app
+
+      - name: Set up Ruby and bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Upload build to TestFlight
+        env:
+          # --- App Store Connect API key (replaces Apple ID + 2FA) ---
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          # --- fastlane match: read-only access to the private certs repo ---
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # Non-interactive: fail fast instead of hanging on a prompt forever.
+          FASTLANE_SKIP_UPDATE_CHECK: "1"
+          FASTLANE_HIDE_CHANGELOG: "1"
+        run: bundle exec fastlane ios beta
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastlane-logs
+          path: |
+            ~/Library/Logs/gym
+            ~/Library/Logs/fastlane
+          retention-days: 7

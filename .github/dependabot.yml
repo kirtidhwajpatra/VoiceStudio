@@ -1,0 +1,40 @@
+# Dependabot keeps the toolchain current without you tracking it manually.
+#
+# Note what is and is not automated here. GitHub Actions and Ruby gems get
+# automatic PRs because they are build infrastructure -- a regression shows up
+# as a red CI run, cheaply. Swift package updates are deliberately weekly and
+# grouped so you review audio dependencies deliberately rather than rubber-
+# stamping a stream of individual bumps.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ci"
+    labels: ["dependencies", "ci"]
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: bundler
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore"
+    labels: ["dependencies", "release-tooling"]
+
+  - package-ecosystem: swift
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+    labels: ["dependencies"]

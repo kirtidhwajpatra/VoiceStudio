@@ -1,3 +1,87 @@
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# ---------------------------------------------------------------------------
+# Xcode - user-specific state
+# Never commit these: they are per-developer and cause constant merge conflicts.
+# ---------------------------------------------------------------------------
 xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ---------------------------------------------------------------------------
+# Xcode - build products
+# ---------------------------------------------------------------------------
+build/
+DerivedData/
+*.o
+*.LinkFileList
+timeline.xctimeline
+playground.xcworkspace
+
+# ---------------------------------------------------------------------------
+# Swift Package Manager
+# NOTE: Package.resolved IS committed on purpose (see docs/GIT_WORKFLOW.md).
+# It pins exact dependency versions so CI builds what you build.
+# ---------------------------------------------------------------------------
+.build/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+.swiftpm/configuration/
+
+# ---------------------------------------------------------------------------
+# CocoaPods / Carthage (not used today, ignored defensively)
+# ---------------------------------------------------------------------------
+Pods/
+Carthage/Build/
+
+# ---------------------------------------------------------------------------
+# Fastlane
+# Generated reports and screenshots are build output, not source.
+# ---------------------------------------------------------------------------
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+fastlane/README.md
+
+# ---------------------------------------------------------------------------
+# Secrets - CRITICAL
+# If any of these ever land in a commit, the credential is compromised even
+# after you delete it, because git history is permanent. Rotate, don't just rm.
+# ---------------------------------------------------------------------------
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
+.env
+.env.*
+!.env.example
+AuthKey_*.p8
+
+# ---------------------------------------------------------------------------
+# Local tooling
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+tools/spike/.venv/
+tools/spike/__pycache__/
+tools/spike/.model-cache/
+**/__pycache__/
+*.pyc
+
+# ---------------------------------------------------------------------------
+# Local audio scratch output
+# ---------------------------------------------------------------------------
 TestClips/output/
