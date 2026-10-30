@@ -51,9 +51,10 @@ enum ButtonFeel {
 struct GlowPillButton: View {
     let title: String
     var icon: String? = nil
-    var tint: Color = Brand.forest
-    /// Label colour — deep forest on lime surfaces, white on dark ones.
-    var foreground: Color = Brand.lime
+    /// Primary by default: flat lime fill, forest label (BrandGuidelines).
+    /// Secondary actions pass `GlowPillButton.secondaryTint` / `.secondaryForeground`.
+    var tint: Color = Brand.lime
+    var foreground: Color = Brand.forest
     var feel: ButtonFeel = .standard
     /// Toolbar-sized variant: hugs its text instead of filling the row.
     var compact = false
@@ -68,7 +69,10 @@ struct GlowPillButton: View {
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
-    @State private var rimPulse = false
+
+    /// The neutral secondary style: a quiet ink tint with ink label.
+    static let secondaryTint = Brand.ink.opacity(0.08)
+    static let secondaryForeground = Brand.ink
 
     var body: some View {
         Button {
@@ -94,25 +98,12 @@ struct GlowPillButton: View {
             .padding(.vertical, compact ? Spacing.xs : Spacing.m)
             .frame(maxWidth: compact ? nil : .infinity)
             .background(GelBackground(tint: tint, shape: Capsule(), progress: isBusy ? progress : nil))
-            .overlay {
-                if isBusy {
-                    Capsule()
-                        .stroke(.white.opacity(0.55), lineWidth: 1.5)
-                        .blur(radius: 2)
-                        .opacity(rimPulse ? 0.9 : 0.25)
-                        .onAppear {
-                            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                                rimPulse = true
-                            }
-                        }
-                        .onDisappear { rimPulse = false }
-                }
-            }
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .capsule)
-        .saturation(isEnabled ? 1 : 0.25)
-        .opacity(isEnabled ? 1 : 0.55)
+        // Flat fill + a gentle press response. No glass layer, glow or
+        // pulsing rim: the spinner and label already say it's working.
+        .buttonStyle(FlatPressStyle())
+        .opacity(isEnabled ? 1 : 0.45)
         .onChange(of: isBusy) { was, now in
             if was, !now { ButtonFeel.playSuccess() }
         }
@@ -173,10 +164,8 @@ struct GlowIconButton: View {
             .background {
                 if let tint {
                     Rectangle().fill(tint)
-                } else if isActive || style == .primary {
-                    Brand.forest
-                } else if style == .secondary {
-                    Brand.limeGradient
+                } else if isActive || style == .primary || style == .secondary {
+                    Brand.accent
                 } else {
                     Brand.ink.opacity(0.07)
                 }
@@ -194,8 +183,7 @@ struct GlowIconButton: View {
 
     private var glyphStyle: AnyShapeStyle {
         if let foreground { return AnyShapeStyle(foreground) }
-        if isActive || style == .primary { return AnyShapeStyle(Brand.limeGradient) }
-        if style == .secondary { return AnyShapeStyle(Brand.forest) }
+        if isActive || style == .primary || style == .secondary { return AnyShapeStyle(Brand.onAccent) }
         return AnyShapeStyle(Brand.ink)
     }
 }
@@ -223,24 +211,14 @@ private struct GelBackground<S: InsettableShape>: View {
     }
 }
 
-/// Squish + glow-tighten on press, with a soft haptic on finger-down so
-/// the gel responds before the action even fires.
-private struct GelPressStyle: ButtonStyle {
-    let tint: Color
+/// A quiet press response: a slight dip in opacity and scale. No shadow.
+private struct FlatPressStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.95 : 1))
-            .brightness(configuration.isPressed ? -0.05 : 0)
-            .shadow(color: tint.opacity(configuration.isPressed ? 0.32 : 0.48),
-                    radius: configuration.isPressed ? 8 : 16,
-                    y: configuration.isPressed ? 4 : 8)
-            .animation(.spring(response: 0.28, dampingFraction: 0.6), value: configuration.isPressed)
-            .onChange(of: configuration.isPressed) { _, pressed in
-                if pressed {
-                    UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.7)
-                }
-            }
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.97)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

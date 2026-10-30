@@ -12,6 +12,7 @@ enum AppRoute: Hashable {
     case save(ResultViewModel)
     case library
     case settings
+    case paywall
 }
 
 enum HomePhase: Equatable {
@@ -49,6 +50,7 @@ struct ContentView: View {
     #endif
 
     @State private var showLyrics: Bool = false
+    @State private var showPaywall: Bool = false
 
     var body: some View {
         ZStack {
@@ -68,6 +70,8 @@ struct ContentView: View {
                         }
                     case .settings:
                         SettingsView(path: $homePath)
+                    case .paywall:
+                        EmptyView() // Paywall is presented as full-screen cover
                     }
                 }
                 .transition(appTransition.anyTransition)
@@ -81,7 +85,9 @@ struct ContentView: View {
                 ToastView(
                     message: ToastManager.shared.message,
                     icon: ToastManager.shared.icon,
-                    isProcessing: ToastManager.shared.isProcessing
+                    isProcessing: ToastManager.shared.isProcessing,
+                    celebration: ToastManager.shared.isCelebration,
+                    celebrationID: ToastManager.shared.celebrationID
                 )
                 .padding(.top, Spacing.s)
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -99,6 +105,14 @@ struct ContentView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.8),
                    value: NowPlayingController.shared.track)
         .preferredColorScheme(appTheme.colorScheme)
+        .paywall(isPresented: $showPaywall)
+        .onChange(of: homePath) { _, newPath in
+            // Intercept the paywall route and present as full-screen cover instead.
+            if newPath.last == .paywall {
+                homePath.removeLast()
+                showPaywall = true
+            }
+        }
     }
 
     /// True when the recordings list is the top-most pushed screen.
@@ -128,7 +142,7 @@ struct ContentView: View {
 
             case .permissionDenied:
                 Group {
-                    Text("StudioVocals needs microphone access to record your singing.")
+                    Text("Voice Studio needs microphone access to record your singing.")
                         .font(.dsBody)
                         .multilineTextAlignment(.center)
                     Button("Open Settings") {
@@ -154,6 +168,9 @@ struct ContentView: View {
             }
             if ProcessInfo.processInfo.arguments.contains("--open-settings") {
                 homePath.append(.settings)
+            }
+            if ProcessInfo.processInfo.arguments.contains("--open-paywall") {
+                homePath.append(.paywall)
             }
             if ProcessInfo.processInfo.arguments.contains("--result-first"),
                let first = try? RecordingLibrary.listRecordings().first?.url {

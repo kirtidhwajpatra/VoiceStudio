@@ -1,66 +1,64 @@
 # HUMMI Brand Guidelines
 
-The palette lives in `Foundations/Brand.swift`. Never use raw hexes in views.
+The brand comes from the app icon: a **coral microphone** held by a
+**two-tone blue cradle**, with a **blue sparkle**. Coral is the voice; blue is
+the studio around it; the sparkle is the moment it sounds great.
 
-## Tokens
+Tokens live in `Foundations/Brand.swift`. Never use raw hex in views.
 
-| Token | Light | Dark | Use |
+## Palette
+
+| Token | Light | Dark | Role |
 |---|---|---|---|
-| `Brand.lime` → `Brand.limeDeep` | #A3F063 → #6AD634 | same | THE hero colour, always as `Brand.limeGradient` |
-| `Brand.forest` | #173300 | same | Text/glyphs ON lime surfaces |
-| `Brand.ink` | #173300 | #D9F7BF | Text/glyphs on the canvas |
-| `Brand.canvas` | off-white | forest-black | Screen backgrounds that aren't plain white |
-| Record red | #FF6B5C → #D11726 | same | The record control ONLY |
+| `Brand.accent` | #1458E6 | #1458E6 | The one filled primary action per screen (vivid logo blue) |
+| `Brand.onAccent` | white | white | Labels and glyphs on accent fills (5.9:1) |
+| `Brand.accentText` | #0F52D9 | #5C9BFF | Blue text, outlines, selection rings, progress on the canvas |
+| `Brand.voice` → `voiceDeep` | #FF4F5E → #E8364A | same | Record button, live voice waveform, reward sparkles |
+| `Brand.onVoice` | white | same | Text on a coral fill (use on `voiceDeep`) |
+| `Brand.sky` | #4FA3FF | same | Light blue tints, waveform progress on the dark paywall, illustration accents |
+| `Brand.ink` | #070D1F | #F5F7FC | Text and glyphs on the canvas (19:1 / 18:1) |
+| `Brand.canvas` | #FFFFFF | #060A14 | Screen background (white / deep studio navy) |
+| `Brand.surface` | #F1F3F8 | #141B2E | Cards, rows, toasts, small round buttons |
+| `Brand.night` | #060A14 | #060A14 | Always-dark screens (paywall) |
 
-## The 5–10% rule (the law of this design system)
+`logoBlue`, `logoCoral`, `logoSky` are the exact icon colours, used only to
+draw the mark. The icon's coral and light blue are pastels, so the UI uses
+the same hues at higher saturation.
+The old names `lime`, `limeDeep`, `limeGradient`, `forest` still compile and
+resolve to `accent`, `accentText`, `accentGradient`, `onAccent`.
 
-**Lime may cover at most 5–10% of any screen, and only on the single most
-important element.** Everything else is forest ink, forest tints
-(`Brand.ink.opacity(...)`), neutrals, or white. If two things on a screen
-are lime, one of them is wrong.
+## Rules
 
-Who gets the lime, per screen:
-- **Home (idle)**: the import button (`.primary`) plus the script button
-  at low intensity (`.secondary`) — together well under 10%. The red
-  record button stays the focal point. While recording, the live
-  waveform takes the lime; a toggle that is ON (script open) goes full
-  lime.
-- **Recorded review**: the "Make it Studio" pill.
-- **Studio**: the "Save" pill. (Orbs/tiles have their own palettes —
-  they are content, not chrome.)
-- **Save screen**: the "Save Audio" pill.
+- **One filled blue button per screen.** Secondary actions use `ink` at 8%
+  with `ink` labels; low-stakes toolbar actions are plain text.
+- **Coral is the voice, and only the voice:** the record button, the live
+  waveform, reward sparkles. Never a button fill, never an error colour.
+- **Text on the canvas is `ink` or `accentText`.** Never use a fixed colour
+  (white, `night`, `accent`) as text on the canvas; it fails in one of the
+  two appearances. Secondary text is `ink` at 55–60%.
+- **Backgrounds are `canvas`, cards are `surface`.** Do not use
+  `Color(.systemBackground)`, which is pure black in dark mode and breaks the
+  navy studio feel.
+- **Failures are amber** (`PaywallStyle.caution`), not red or coral.
+- **Shadows:** one soft contact shadow at most. No coloured glows.
 
-## Red — the one exception
+## The mark
 
-Record red exists for exactly one control: the record/stop button.
-Simple treatment: a large flat two-stop gradient disc with a hairline
-highlight — SOLID at rest (no inner dot); the white stop square appears
-only while recording. No gloss, no halos, no glow shadows. Nothing
-else in the app may be red (destructive actions communicate through
-the warning haptic + confirmation alerts, not colour).
+- `HummiMark` draws the icon in code (crisp at any size, parts animate).
+  The splash builds it: cradle draws in, mic springs in, sparkle twinkles.
+- There is no wordmark. Where the brand needs to appear, use `HummiMark`.
 
-## Component rules
+## Rewards
 
-- **Primary pill** (`GlowPillButton` defaults): lime gradient, forest
-  label. One per screen, max.
-- **Inverted secondary**: forest fill, lime label (e.g. "Share as Video").
-- **Neutral secondary / toolbar**: gray or glass, never lime.
-- **Icon buttons** (`GlowIconButton`): a two-tier hierarchy of exact
-  inverses — `.primary` (lime wash + forest glyph; at most one utility
-  per screen), `.secondary` (forest fill + lime-gradient glyph, the
-  default — the everyday tier), `.quiet` (plain ink chrome for controls
-  that should recede, e.g. playback). A toggled-ON state always goes
-  full lime. Buttons are generous: ~72–80pt wide capsules; the record
-  disc is 92pt.
-- **Type**: eyebrow = footnote semibold, tracked, uppercase, ink 55%;
-  display = SERIF (New York) black, uppercase, in ink; body = regular SF.
-  Numerals (timers) = SF Rounded heavy monospaced digits.
-- **Feels**: every button keeps its role haptic + sound (ButtonFeel).
+Use `ToastManager.shared.celebrate(_:)` only for something the singer
+achieved: a take recorded, a studio take saved, an export ready. It shows
+the logo's sparkle bursting with coral and sky sparks, plus one success
+haptic. Studio also shows a measured result line ("20% steadier · Clarity
++3 dB"). Ordinary status uses `show(message:)`.
 
-## Do / Don't
+## Iconography & illustration
 
-- DO let white/canvas breathe — the restraint is what makes lime loud.
-- DO use `Brand.ink.opacity(0.3–0.65)` for secondary chrome and graphs.
-- DON'T tint large surfaces lime (backgrounds, cards, full waveforms at rest).
-- DON'T mix the old coral/sky palette back in.
-- DON'T give two screen elements lime at once.
+- Brand glyphs use `HummiIcon` (24-grid, 2pt rounded stroke).
+- Spaces use `SpaceIllustration` + `RoomSizeMeter`; their accent dot uses the
+  space's own colour, lifted 35% toward white in dark mode.
+- System affordances (share, chevron, close) stay SF Symbols.

@@ -2,11 +2,12 @@
 //  SplashScreen.swift
 //  HUMMI
 //
-//  The launch moment, staged to feel like tapping the home-screen icon: the
-//  app opens on the icon's note-and-waves mark, which recoils from the tap
-//  and springs back, holds a beat, then hands off to the app. Tap to skip.
-//  Reduce Motion trades the bounce for a calm fade. Purely presentational;
-//  calls `onFinish` exactly once.
+//  The launch moment, built from the app icon: the blue cradle draws in
+//  like a stand being set up, the coral mic springs into it, the sparkle
+//  twinkles once. About 1.3 seconds;
+//  tap to skip. Reduce Motion shows the finished mark with a short fade.
+//  Follows the device appearance (studio navy in dark, off-white in light).
+//  Purely presentational; calls `onFinish` exactly once.
 //
 
 import SwiftUI
@@ -19,14 +20,11 @@ struct SplashScreen: View {
     @Environment(\.accessibilityReduceMotion) private var envReduceMotion
     private var reduceMotion: Bool { reduceMotionPreference || envReduceMotion }
 
-    @State private var scale: CGFloat = 1
-    @State private var offsetY: CGFloat = 0
+    @State private var cradle: CGFloat = 0
+    @State private var mic: CGFloat = 0
+    @State private var sparkle: CGFloat = 0
     @State private var opacity: Double = 0
     @State private var finished = false
-
-    /// The icon's dark forest field — a touch darker than the wave art so the
-    /// ripple ellipses read, exactly like the app icon.
-    private let forest = Color(red: 13 / 255, green: 28 / 255, blue: 3 / 255)
 
     init(reduceMotion: Bool = false, onFinish: @escaping () -> Void) {
         self.reduceMotionPreference = reduceMotion
@@ -35,47 +33,39 @@ struct SplashScreen: View {
 
     var body: some View {
         ZStack {
-            forest.ignoresSafeArea()
+            Brand.canvas.ignoresSafeArea()
 
-            Image("SplashNote")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 150)
-                .scaleEffect(scale)
-                .offset(y: offsetY)
+            HummiMark(size: 140, micScale: mic, cradleProgress: cradle, sparkle: sparkle)
                 .opacity(opacity)
         }
         .contentShape(Rectangle())
         .onTapGesture { finish() }
         .accessibilityElement()
-        .accessibilityLabel(Text("VOICE Studio"))
+        .accessibilityLabel(Text(AppBranding.name))
         .accessibilityAddTraits(.isImage)
         .task { await run() }
     }
 
     private func run() async {
         if reduceMotion {
+            cradle = 1; mic = 1; sparkle = 1
             withAnimation(.easeOut(duration: 0.25)) { opacity = 1 }
-            try? await sleep(1.4)
+            try? await sleep(1.0)
             finish()
             return
         }
 
-        // The app opens already recoiling from the tap — press back…
-        withAnimation(.easeOut(duration: 0.12)) { opacity = 1 }
-        withAnimation(.easeInOut(duration: 0.1)) {
-            scale = 0.8
-            offsetY = 12
-        }
-        try? await sleep(0.1)
-
-        // …then snap back with a quick bounce and hold before the home screen.
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.42)) {
-            scale = 1
-            offsetY = 0
-        }
-        try? await sleep(2.0)
-
+        opacity = 1
+        // 1. The stand draws in.
+        withAnimation(.easeOut(duration: 0.4)) { cradle = 1 }
+        try? await sleep(0.22)
+        // 2. The mic springs into it.
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) { mic = 1 }
+        try? await sleep(0.32)
+        // 3. One twinkle, with a soft tick.
+        Haptics.shared.play(.soft)
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.5)) { sparkle = 1 }
+        try? await sleep(0.75)
         finish()
     }
 

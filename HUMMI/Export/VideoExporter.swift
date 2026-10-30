@@ -34,9 +34,11 @@ nonisolated enum VideoExporter {
     private static let timerCenterX: CGFloat = 785
 
     // Palette — the app's brand (Brand.swift), mirrored in UIKit colours.
-    private static let limeTop = UIColor(red: 163 / 255, green: 240 / 255, blue: 99 / 255, alpha: 1)
-    private static let limeDeep = UIColor(red: 106 / 255, green: 214 / 255, blue: 52 / 255, alpha: 1)
-    private static let forest = UIColor(red: 23 / 255, green: 51 / 255, blue: 0, alpha: 1)
+    // limeTop/limeDeep keep their old names but now hold the studio blue
+    // (Brand.logoBlue -> Brand.accent); forest is the navy night canvas.
+    private static let limeTop = UIColor(hex: 0x1458E6)
+    private static let limeDeep = UIColor(hex: 0x0F4ED6)
+    private static let forest = UIColor(hex: 0x060A14)
 
     static func exportMP4(
         audioURL: URL, peaks: [Float], duration: TimeInterval,
@@ -147,7 +149,7 @@ nonisolated enum VideoExporter {
     }
 
     private static func pumpVideo(_ ctx: VideoPumpContext) async throws {
-        let queue = DispatchQueue(label: "com.hummi.video-export")
+        let queue = DispatchQueue(label: "com.voicestudio.video-export")
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             ctx.input.requestMediaDataWhenReady(on: queue) {
                 if ctx.finished { return }
@@ -264,7 +266,7 @@ nonisolated enum VideoExporter {
     }
 
     /// The brand button, styled exactly like the app's lime gel buttons:
-    /// lime gradient disc, deep-forest glyph. In the first half second it
+    /// blue gradient disc, white glyph. In the first half second it
     /// "presses" — dips and springs back — and at the bottom of the press
     /// the play triangle becomes a pause glyph, because playback started.
     private static func drawPlayButton(in ctx: CGContext, time: TimeInterval) {
@@ -288,7 +290,7 @@ nonisolated enum VideoExporter {
         }
         ctx.restoreGState()
 
-        ctx.setFillColor(forest.cgColor)
+        ctx.setFillColor(UIColor.white.cgColor)
         if time >= 0.30 {  // pause — playback is running
             let barWidth = 13 * scale
             let barHeight = 42 * scale
@@ -454,11 +456,11 @@ nonisolated enum VideoExporter {
 
             switch template {
             case .voiceNote:
-                // Deep forest base — the brand canvas, brighter toward the top.
+                // Studio navy base, brighter toward the top.
                 let base = [
-                    UIColor(red: 0.13, green: 0.26, blue: 0.05, alpha: 1).cgColor,
-                    UIColor(red: 0.07, green: 0.16, blue: 0.02, alpha: 1).cgColor,
-                    UIColor(red: 0.10, green: 0.22, blue: 0.04, alpha: 1).cgColor,
+                    UIColor(hex: 0x13245A).cgColor,
+                    UIColor(hex: 0x060A14).cgColor,
+                    UIColor(hex: 0x0D1838).cgColor,
                 ] as CFArray
                 if let gradient = CGGradient(colorsSpace: space, colors: base, locations: [0, 0.55, 1]) {
                     ctx.drawLinearGradient(
@@ -471,11 +473,11 @@ nonisolated enum VideoExporter {
                 drawBloom(in: ctx, space: space,
                           center: CGPoint(x: size.width * 0.80, y: size.height * 0.30),
                           radius: 720,
-                          color: UIColor(red: 0.55, green: 0.85, blue: 0.32, alpha: 0.32))
+                          color: UIColor(hex: 0x1458E6).withAlphaComponent(0.34))
                 drawBloom(in: ctx, space: space,
                           center: CGPoint(x: size.width * 0.10, y: size.height * 0.78),
                           radius: 820,
-                          color: UIColor(red: 0.03, green: 0.10, blue: 0.01, alpha: 0.60))
+                          color: UIColor(hex: 0xFF4F5E).withAlphaComponent(0.22))
 
                 // Frosted glass capsule with a soft drop shadow.
                 let pill = UIBezierPath(roundedRect: pillRect, cornerRadius: pillRect.height / 2)
@@ -521,7 +523,7 @@ nonisolated enum VideoExporter {
                 drawBloom(in: ctx, space: space,
                           center: CGPoint(x: size.width / 2, y: size.height / 2),
                           radius: 900,
-                          color: UIColor(red: 0.20, green: 0.35, blue: 0.10, alpha: 0.40))
+                          color: UIColor(hex: 0x1458E6).withAlphaComponent(0.30))
             }
 
             if watermark {

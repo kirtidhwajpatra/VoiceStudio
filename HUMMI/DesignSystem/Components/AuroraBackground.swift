@@ -16,12 +16,10 @@ struct AuroraBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        Color(uiColor: UIColor { traits in 
-            traits.userInterfaceStyle == .dark ? UIColor(white: 0.04, alpha: 1.0) : UIColor(white: 0.96, alpha: 1.0) 
-        })
+        Brand.canvas
             .overlay(
                 RadialGradient(
-                    colors: [Brand.lime.opacity(0.10 + 0.20 * Double(min(energy * 2.5, 1))), .clear],
+                    colors: [Brand.voice.opacity(0.08 + 0.16 * Double(min(energy * 2.5, 1))), .clear],
                     center: .center, startRadius: 0, endRadius: 420)
                     .opacity(energy > 0.001 ? 1 : 0)
             )

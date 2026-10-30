@@ -14,7 +14,7 @@ import UIKit
 enum StudioTheme {
     /// Light: the brand's off-white canvas. Dark: near-black with a hint
     /// of warmth — never pure black.
-    static let canvas = Color(.systemBackground)
+    static let canvas = Brand.canvas
     static let textPrimary = Color.primary
     static let textSecondary = Color.secondary
     static let textTertiary = Color(.tertiaryLabel)
