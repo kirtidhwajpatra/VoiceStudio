@@ -80,6 +80,13 @@ final class ResultViewModel {
     private var noiseReductionTask: Task<Void, Never>?
     private var originalSamples: [Float]?
     private var noiseReducedSamples: [Float]?
+    /// The studio-mic polish (VocalPolishChain) applied to the Studio
+    /// path. On by default; toggleable for A/B listening.
+    var studioPolish = true
+    private var polishCache: (key: String, samples: [Float])?
+    /// What the polish measurably did to this take; drives Studio's
+    /// result line. Nil until measured, or when polish is off.
+    private(set) var polishReport: PolishReport?
     private var previewedAutotune = 0.0
     private var previewedNoiseRemoval = NoiseReductionLevel.off.rawValue
     private var noiseRenderRevision = 0
@@ -138,7 +145,9 @@ final class ResultViewModel {
         guard !isRendering else { return }
         do {
             try abPlayer.load(original: originalURL, enhancedBase: originalURL)
-            previewedAutotune = 0  // load replaced any autotuned studio buffer
+            // -1 forces one background refresh, which swaps the raw take
+            // for the polished studio base (and any autotune) right away.
+            previewedAutotune = -1
             previewedNoiseRemoval = 0
             noiseReducedSamples = nil
             abPlayer.listeningToProcessed = true
@@ -258,7 +267,7 @@ final class ResultViewModel {
                 self.noiseReducedSamples = requestedStrength > 0 ? reduced : nil
                 self.previewedNoiseRemoval = requestedStrength
 
-                let base = self.noiseReducedSamples ?? original
+                let base = try await self.polished(self.noiseReducedSamples ?? original)
                 let studio = self.autotuneStrength > 0
                     ? try await Self.pitchCorrected(base, strength: self.autotuneStrength)
                     : base
@@ -275,9 +284,35 @@ final class ResultViewModel {
     private func previewBaseSamples() async throws -> [Float] {
         if abs(previewedNoiseRemoval - noiseRemoval) < 0.001,
            let noiseReducedSamples {
-            return noiseReducedSamples
+            return try await polished(noiseReducedSamples)
         }
-        return try await cachedOriginalSamples()
+        return try await polished(try await cachedOriginalSamples())
+    }
+
+    /// Applies the studio-mic polish, cached per cleanup level so autotune
+    /// and slider changes don't re-run it.
+    private func polished(_ samples: [Float]) async throws -> [Float] {
+        guard studioPolish else { return samples }
+        // Fingerprint of the input (length + 64 spread samples), so the
+        // raw and noise-reduced bases never share a cache entry.
+        let stride = max(samples.count / 64, 1)
+        let probe = Swift.stride(from: 0, to: samples.count, by: stride).reduce(Float(0)) { $0 + samples[$1] }
+        let key = "\(samples.count)-\(probe)"
+        if let polishCache, polishCache.key == key { return polishCache.samples }
+        let (result, report) = try await Self.polishMeasured(samples)
+        polishCache = (key, result)
+        polishReport = report
+        return result
+    }
+
+    /// Turns the studio-mic polish on or off and re-renders the preview.
+    func setStudioPolish(_ on: Bool) {
+        guard on != studioPolish else { return }
+        studioPolish = on
+        polishCache = nil
+        if !on { polishReport = nil }
+        previewedAutotune = -1
+        scheduleAutotunePreview()
     }
 
     func resetToPreset() {
@@ -329,7 +364,7 @@ final class ResultViewModel {
             if format == ExportFormat.wav.rawValue { try FileManager.default.copyItem(at: currentURL, to: output) }
             else { try await AudioExporter.exportM4A(from: currentURL, to: output) }
             shareItem = ShareItem(url: output)
-            ToastManager.shared.show(message: "Audio prepared", icon: "checkmark.circle.fill")
+            ToastManager.shared.celebrate("Your take is ready to share")
         } catch { 
             errorMessage = error.localizedDescription 
             ToastManager.shared.hide()
@@ -352,7 +387,7 @@ final class ResultViewModel {
                 Task { @MainActor in self?.videoProgress = progress }
             }
             shareItem = ShareItem(url: output)
-            ToastManager.shared.show(message: "Video prepared", icon: "checkmark.circle.fill")
+            ToastManager.shared.celebrate("Your video is ready to share")
         } catch { 
             errorMessage = error.localizedDescription 
             ToastManager.shared.hide()
@@ -432,6 +467,11 @@ final class ResultViewModel {
         var p = PresetParameters()
         p.pitchCorrectionStrength = strength
         return try PitchCorrectionStage(parameters: p).process(samples)
+    }
+
+    @concurrent private static func polishMeasured(_ samples: [Float]) async throws -> ([Float], PolishReport?) {
+        let polished = try VocalPolishChain.process(samples)
+        return (polished, PolishReport.measure(before: samples, after: polished))
     }
 
     @concurrent private static func reduceNoise(_ samples: [Float], strength: Double) async throws -> [Float] {

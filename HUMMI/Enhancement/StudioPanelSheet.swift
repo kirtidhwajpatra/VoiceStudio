@@ -168,10 +168,14 @@ struct StudioPanelSheet: View {
             if viewModel.isUpdatingNoiseReduction {
                 progressRow("Applying cleanup…")
             }
+            Toggle("Studio Mic Polish", isOn: Binding(
+                get: { viewModel.studioPolish },
+                set: { viewModel.setStudioPolish($0) }))
+                .tint(Brand.limeDeep)
         } header: {
             Text("Cleanup")
         } footer: {
-            Text("Uses AI to remove background noise. Higher settings might affect vocal tone.")
+            Text("Noise Reduction uses on-device AI; nothing is uploaded. Studio Mic Polish removes rumble and boxiness, smooths harsh “s” sounds, evens out loud and soft notes, and adds clarity.")
         }
     }
 

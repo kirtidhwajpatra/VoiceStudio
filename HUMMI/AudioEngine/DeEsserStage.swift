@@ -20,9 +20,11 @@ nonisolated final class DeEsserStage: BufferStage {
     static let thresholdMarginDB = 8.0
 
     private let ratio: Double
+    private let marginDB: Double
 
     init(parameters: PresetParameters) {
         self.ratio = parameters.deEsserRatio
+        self.marginDB = parameters.deEsserMarginDB
     }
 
     func process(_ samples: [Float]) throws -> [Float] {
@@ -59,7 +61,7 @@ nonisolated final class DeEsserStage: BufferStage {
             }
             bandLevelsDB[k] = 20 * log10((sum / Double(band.count)).squareRoot() + 1e-12)
         }
-        guard let cutsDB = Self.cutsDB(bandLevelsDB: bandLevelsDB, ratio: ratio) else {
+        guard let cutsDB = Self.cutsDB(bandLevelsDB: bandLevelsDB, ratio: ratio, marginDB: marginDB) else {
             return samples  // no active frames; nothing to de-ess
         }
 
@@ -96,10 +98,10 @@ nonisolated final class DeEsserStage: BufferStage {
     /// median(levels > -80) + 8 dB, cut above it by (1 - 1/ratio),
     /// de-fluttered with a 3-frame moving average. Returns nil when no
     /// frame is active (silent clip).
-    static func cutsDB(bandLevelsDB: [Double], ratio: Double) -> [Double]? {
+    static func cutsDB(bandLevelsDB: [Double], ratio: Double, marginDB: Double = thresholdMarginDB) -> [Double]? {
         let active = bandLevelsDB.filter { $0 > -80 }
         guard !active.isEmpty else { return nil }
-        let thresholdDB = median(active) + thresholdMarginDB
+        let thresholdDB = median(active) + marginDB
         let raw = bandLevelsDB.map { max($0 - thresholdDB, 0) * (1 - 1 / ratio) }
         return movingAverage3(raw)
     }

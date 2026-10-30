@@ -35,6 +35,9 @@ nonisolated struct PresetParameters: Sendable {
 
     // De-esser stage — firmer, to keep the brighter top smooth.
     var deEsserRatio: Double = 5.0
+    /// How far above the clip's median 6–9 kHz level a frame must be
+    /// before the de-esser cuts. Lower = catches softer sibilants.
+    var deEsserMarginDB: Double = 8.0
 
     // Multiband compressor stage — denser, more "produced" dynamics.
     var multibandRatio: Double = 3.5
