@@ -21,14 +21,14 @@ struct ABPlaybackRow: View {
                 player.togglePlayPause()
             } label: {
                 ZStack {
-                    Circle().fill(Color.accentColor)
+                    Circle().fill(Brand.accent)
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.title.weight(.medium))
                         .foregroundStyle(.white)
                         .offset(x: player.isPlaying ? 0 : 3)  // optical centering
                 }
                 .frame(width: 72, height: 72)
-                .shadow(color: Color.accentColor.opacity(0.3), radius: 8, y: 3)
+                .shadow(color: Brand.accent.opacity(0.3), radius: 8, y: 3)
             }
             .buttonStyle(PressStyle())
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")

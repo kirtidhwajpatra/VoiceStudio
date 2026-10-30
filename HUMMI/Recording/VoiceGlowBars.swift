@@ -50,10 +50,9 @@ struct VoiceGlowBars: View {
             }
 
             WaveformView(peaks: samples,
-                         tint: isRecording ? Brand.forest : Brand.ink.opacity(0.3),
+                         tint: isRecording ? Brand.voiceDeep : Brand.ink.opacity(0.3),
                          style: .bars, normalize: false)
                 .frame(width: Self.graphWidth, height: 110)
-                .shadow(color: Brand.forest.opacity(isRecording ? 0.35 : 0), radius: 16)
         }
         .animation(.easeInOut(duration: 0.25), value: isRecording)
             .onChange(of: level) { _, newLevel in

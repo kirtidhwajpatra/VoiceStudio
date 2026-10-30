@@ -21,30 +21,35 @@ struct CharacterCard: View {
     var onLongPress: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var entered = false
 
-    private let diameter: CGFloat = 104
+    private let diameter: CGFloat = 76
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: Spacing.s) {
-                // The glass pill icon inspired by GlowIconButton
+                // The orb: a small lit world tinted with this filter's
+                // palette. Selection wraps it in the brand lime ring and
+                // turns the light up.
                 ZStack {
-                    Circle().fill(isActive ? Brand.lime.opacity(0.15) : Brand.ink.opacity(0.06))
-                    
-                    Image(systemName: filter.glyph)
-                        .font(.system(size: 36, weight: .semibold))
-                        .foregroundStyle(Brand.ink.opacity(isActive ? 1.0 : 0.6))
-                        .contentTransition(.symbolEffect(.replace))
+                    OrbView(palette: filter.orb,
+                            seed: filter.id,
+                            energy: isActive ? 1 : 0,
+                            diameter: diameter)
                 }
                 .frame(width: 88, height: 88)
-                .glassEffect(.regular.interactive(), in: .circle)
-                .scaleEffect(isActive ? 1.05 : 1)
-
+                .overlay {
+                    if isActive {
+                        Circle()
+                            .strokeBorder(Brand.limeDeep, lineWidth: 2.5)
+                            .frame(width: 86, height: 86)
+                            .transition(.opacity)
+                    }
+                }
+                .scaleEffect(isActive ? 1.06 : 1)
 
                 Text(filter.name)
                     .font(.caption.weight(isActive ? .bold : .semibold))
-                    .foregroundStyle(isActive ? Brand.ink : Brand.ink.opacity(0.8))
+                    .foregroundStyle(isActive ? Brand.ink : Brand.ink.opacity(0.75))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -52,25 +57,12 @@ struct CharacterCard: View {
         }
         .buttonStyle(.plain)
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in onLongPress() })
-        .opacity(entered ? 1 : 0)
-        .offset(y: entered ? 0 : 8)
-        .onAppear {
-            guard !entered else { return }
-            withAnimation(Motion.adaptive(
-                Motion.standard.delay(Double(index) * 0.04), reduceMotion: reduceMotion)) {
-                entered = true
-            }
-        }
+        // No entrance animation: cards are simply there as the row scrolls.
+        // Only selection animates.
         .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: isActive)
         .accessibilityLabel("\(filter.name). \(filter.tagline)")
         .accessibilityHint("Applies the \(filter.name) voice character filter.")
         .accessibilityValue(isActive ? "Selected" : "")
         .accessibilityAddTraits(isActive ? .isSelected : [])
-    }
-
-    /// Where this filter's sun sits, stable across launches.
-    private var lightAngle: Double {
-        let seed = filter.id.unicodeScalars.reduce(0) { $0 + Int($1.value) }
-        return Double((seed * 37) % 360)
     }
 }

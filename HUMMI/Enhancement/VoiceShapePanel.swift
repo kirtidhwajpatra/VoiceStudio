@@ -29,7 +29,7 @@ struct VoiceShapePanel: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .padding(6)
-                            .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                            .background(Brand.surface, in: Circle())
                     }
                     .disabled(viewModel.isRendering)
                     .accessibilityLabel("Reset voice shape")

@@ -33,7 +33,7 @@ struct OnboardingPermissionScreen: View {
             masthead
                 .staggered(0, appeared: appeared)
 
-            Text("HUMMI listens only while you record, and everything is processed right here on this iPhone. No cloud, no uploads, no exceptions.")
+            Text("Voice Studio listens only while you record, and everything is processed right here on this iPhone. No cloud, no uploads, no exceptions.")
                 .font(.callout)
                 .foregroundStyle(Brand.ink.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -49,8 +49,7 @@ struct OnboardingPermissionScreen: View {
             }
         } actions: {
             if isDenied {
-                GlowPillButton(title: "Open Settings", icon: "gear",
-                               tint: Brand.forest, foreground: Brand.lime, feel: .standard) {
+                GlowPillButton(title: "Open Settings", icon: "gear", feel: .standard) {
                     openSettings()
                 }
 
@@ -61,11 +60,14 @@ struct OnboardingPermissionScreen: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
             } else {
-                GlowPillButton(title: "Enable Microphone", icon: "mic.fill",
+                // Neutral label (App Store guideline 5.1.1(iv)): the screen
+                // explains why the mic is needed; the button just moves
+                // forward and lets the system prompt do the asking.
+                GlowPillButton(title: "Continue", icon: "arrow.right",
                                feel: .prominent, isBusy: isRequesting) {
                     Task { await requestPermission() }
                 }
-                .accessibilityHint(Text("Shows the system microphone permission prompt"))
+                .accessibilityHint(Text("Continues to the next step"))
             }
         }
         .animation(Motion.standard, value: isDenied)

@@ -50,13 +50,13 @@ private struct EQBand: View {
         VStack(spacing: Spacing.xs) {
             Text(gainText)
                 .font(.caption.weight(.semibold).monospacedDigit())
-                .foregroundStyle(abs(value) < 0.05 ? AnyShapeStyle(.secondary) : AnyShapeStyle(Brand.forest))
+                .foregroundStyle(abs(value) < 0.05 ? AnyShapeStyle(.secondary) : AnyShapeStyle(Brand.accentText))
                 .contentTransition(.numericText())
 
             track
 
             VStack(spacing: 0) {
-                Text(name).font(.caption2.weight(.bold)).foregroundStyle(Brand.forest)
+                Text(name).font(.caption2.weight(.bold)).foregroundStyle(Brand.ink)
                 Text(hint).font(.system(size: 9)).foregroundStyle(.secondary)
             }
         }
@@ -89,7 +89,7 @@ private struct EQBand: View {
                     .fill(Brand.limeGradient)
                     .frame(width: knob, height: knob)
                     .overlay(Circle().strokeBorder(.white.opacity(0.5), lineWidth: 1))
-                    .shadow(color: Brand.forest.opacity(0.25), radius: 4, y: 2)
+                    .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
                     .position(x: geo.size.width / 2, y: knobY)
             }
             .frame(maxWidth: .infinity)

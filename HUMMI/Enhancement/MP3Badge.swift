@@ -21,14 +21,14 @@ struct MP3Badge: View {
                 ForEach(0..<tickCount, id: \.self) { index in
                     let t = Double(index) / Double(tickCount - 1)
                     Capsule()
-                        .fill(Color.accentColor.opacity(1.0 - 0.72 * t))
+                        .fill(Brand.accent.opacity(1.0 - 0.72 * t))
                         .frame(width: 3.5, height: 11)
                         .offset(y: -radius)
                         .rotationEffect(.degrees(-90 + 180 * t))
                 }
 
                 ZStack {
-                    Circle().fill(Color.accentColor).frame(width: 30, height: 30)
+                    Circle().fill(Brand.accent).frame(width: 30, height: 30)
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)

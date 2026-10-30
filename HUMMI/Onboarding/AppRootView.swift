@@ -50,7 +50,7 @@ struct AppRootView: View {
         #if DEBUG
         let bypass = ["--skip-onboarding", "--record-autorun", "--result-autorun",
                       "--open-recordings", "--pipeline-autorun", "--profile-autorun",
-                      "--spike-autorun", "--export-autorun"]
+                      "--spike-autorun", "--export-autorun", "--open-paywall"]
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--reset-onboarding") {
             hasCompletedOnboarding = false

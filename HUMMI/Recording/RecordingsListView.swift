@@ -66,7 +66,7 @@ struct RecordingsListView: View {
         // plate behind still fills edge to edge.
         .frame(maxWidth: Spacing.contentMaxWidth)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground).ignoresSafeArea())
+        .background(Brand.canvas.ignoresSafeArea())
         .confirmationDialog(
             "Delete this recording?",
             isPresented: deleteDialogPresented,
@@ -119,7 +119,7 @@ struct RecordingsListView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Brand.ink)
                     .frame(width: 44, height: 44)
-                    .background(Color(.systemBackground))
+                    .background(Brand.surface)
                     .clipShape(Circle())
                     .glassEffect(.regular.interactive(), in: .circle)
             }
@@ -139,6 +139,6 @@ struct RecordingsListView: View {
         .padding(.horizontal, Spacing.l)
         .padding(.top, Spacing.m)
         .padding(.bottom, Spacing.xs)
-        .background(Color(.systemBackground))
+        .background(Brand.surface)
     }
 }

@@ -2,8 +2,8 @@
 //  RecordButton.swift
 //  HUMMI
 //
-//  The record control — the app's one red thing, per the brand
-//  guideline. Kept simple: a flat two-stop gradient disc (the same
+//  The record control, in the logo's coral (Brand.voice) — the app's one
+//  coral control. Kept simple: a flat two-stop gradient disc (the same
 //  "slight gradient" treatment as the lime buttons), a hairline
 //  highlight, and a white record dot that morphs into a stop square.
 //  No gloss, no halos, no glow. Press physics and haptics match the
@@ -20,8 +20,6 @@ struct RecordButton: View {
     var rms: Float = 0
     let action: () -> Void
 
-    private static let redTop = Color(red: 1.0, green: 0.42, blue: 0.36)
-    private static let redDeep = Color(red: 0.82, green: 0.09, blue: 0.15)
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -29,8 +27,7 @@ struct RecordButton: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [Self.redTop, Self.redDeep],
-                                         startPoint: .top, endPoint: .bottom))
+                    .fill(Brand.voiceGradient)
                     .frame(width: 92, height: 92)
                 // A clean solid disc at rest; the white stop square only
                 // exists while recording.

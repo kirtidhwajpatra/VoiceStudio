@@ -2,7 +2,7 @@
 //  RecordView.swift
 //  HUMMI
 //
-//  The Ollin home screen workstation: manages idle recording, live recording,
+//  The Voice Studio home screen workstation: manages idle recording, live recording,
 //  recorded review, processing, and the final A/B comparison Studio.
 //
 
@@ -53,6 +53,7 @@ struct RecordView: View {
         }
         .onChange(of: viewModel.lastRecording) { _, url in
             if let url {
+                ToastManager.shared.celebrate("Take recorded")
                 let rVM = ResultViewModel(originalURL: url)
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--studio-autorun") {
@@ -125,34 +126,36 @@ struct RecordView: View {
         // ever fade while the editor has the keyboard.
         .overlay(alignment: .top) {
             HStack {
-                Button {
-                    path.append(.settings)
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Brand.ink)
-                        .frame(width: 44, height: 44)
-                        .background(Color(.systemBackground))
-                        .clipShape(Circle())
-                        .glassEffect(.regular.interactive(), in: .circle)
+                HStack(spacing: Spacing.xs) {
+                    Button {
+                        path.append(.settings)
+                    } label: {
+                        HummiIcon(glyph: .gear, treatment: .line(Brand.ink), size: 22)
+                            .frame(width: 44, height: 44)
+                            .background(Brand.surface)
+                            .clipShape(Circle())
+                            .glassEffect(.regular.interactive(), in: .circle)
+                    }
+                    .accessibilityLabel("Settings")
+                    // No Pro upsell on Home: the paywall appears only when
+                    // a user tries to export, plus a quiet row in Settings.
                 }
                 .disabled(phase != .idle || showLyrics)
                 .opacity((phase == .idle && !showLyrics) ? 1 : 0)
-                
+
                 Spacer()
                 
                 HStack(spacing: 12) {
                     Button {
                         path.append(.library)
                     } label: {
-                        Image(systemName: "folder")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Brand.ink)
+                        HummiIcon(glyph: .folder, treatment: .line(Brand.ink), size: 22)
                             .frame(width: 44, height: 44)
-                            .background(Color(.systemBackground))
+                            .background(Brand.surface)
                             .clipShape(Circle())
                             .glassEffect(.regular.interactive(), in: .circle)
                     }
+                    .accessibilityLabel("Recordings")
                     .disabled(phase != .idle || showLyrics)
                     .opacity((phase == .idle && !showLyrics) ? 1 : 0)
                     
@@ -162,11 +165,17 @@ struct RecordView: View {
                             isLyricsFocused = showLyrics
                         }
                     } label: {
-                        Image(systemName: showLyrics ? "xmark" : "text.quote")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Brand.ink)
-                            .frame(width: 62, height: 44)
-                            .background(Color(.systemBackground))
+                        Group {
+                            if showLyrics {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(Brand.ink)
+                            } else {
+                                HummiIcon(glyph: .script, treatment: .line(Brand.ink), size: 22)
+                            }
+                        }
+                        .frame(width: 62, height: 44)
+                            .background(Brand.surface)
                             .clipShape(Capsule())
                             .glassEffect(.regular.interactive(), in: .capsule)
                     }
@@ -284,14 +293,9 @@ struct RecordView: View {
 
             // Right Button
             if let rVM {
+                // Quiet, like Play: red belongs to the record button only.
                 GlowIconButton(
-                    icon: "xmark", label: "Retake",
-                    tint: AnyShapeStyle(LinearGradient(
-                        colors: [Color.red.opacity(0.35), Color.red.opacity(0.12)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )),
-                    foreground: Brand.forest,
+                    icon: "arrow.counterclockwise", label: "Retake",
                     style: .quiet, feel: .destructive, size: CGSize(width: 72, height: 50)) {
                     self.phase = .idle
                 }
@@ -300,7 +304,8 @@ struct RecordView: View {
                 GlowIconButton(
                     icon: isRecording ? "xmark" : "square.and.arrow.down",
                     label: isRecording ? "Cancel recording" : "Import audio",
-                    style: .secondary,
+                    // Quiet: the record button is this screen's one focal control.
+                    style: .quiet,
                     feel: isRecording ? .destructive : .standard,
                     size: CGSize(width: 72, height: 50),
                     weight: .regular) {
@@ -402,12 +407,12 @@ struct RecordView: View {
                                 isLyricsFocused = false
                             }
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Brand.forest)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(Color.accentColor, in: Capsule())
+                            .background(Brand.lime, in: Capsule())
                         }
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -454,7 +459,7 @@ struct RecordView: View {
     #endif
 
     private var ambientGlow: some View {
-        Color(.systemBackground)
+        Brand.canvas
             .ignoresSafeArea()
     }
 }
@@ -537,7 +542,7 @@ struct ToneFilterCardBackground: View {
                 Circle().fill(c3).frame(width: 100).offset(x: 30, y: 30).blur(radius: 20)
                 Circle().fill(c4).frame(width: 80).offset(x: -30, y: 30).blur(radius: 15).opacity(0.8)
             } else {
-                Color(.secondarySystemGroupedBackground)
+                Brand.surface
                 Circle().fill(c1.opacity(0.15)).frame(width: 80).offset(x: -20, y: -20).blur(radius: 20)
                 Circle().fill(c2.opacity(0.1)).frame(width: 80).offset(x: 20, y: 20).blur(radius: 20)
             }

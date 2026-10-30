@@ -40,8 +40,7 @@ struct StudioSegmented: View {
             .foregroundStyle(isSelected ? Brand.forest : Brand.ink.opacity(0.55))
             .background {
                 if isSelected {
-                    Capsule().fill(Brand.limeGradient)
-                        .shadow(color: Brand.limeDeep.opacity(0.3), radius: 5, y: 2)
+                    Capsule().fill(Brand.accent)
                 }
             }
             .contentShape(Capsule())

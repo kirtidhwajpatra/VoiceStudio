@@ -44,7 +44,7 @@ struct StudioStepper: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.footnote.weight(.bold))
-                .foregroundStyle(enabled ? Brand.forest : Brand.ink.opacity(0.25))
+                .foregroundStyle(enabled ? Brand.accentText : Brand.ink.opacity(0.25))
                 .frame(width: 42, height: 34)
                 .contentShape(Rectangle())
         }

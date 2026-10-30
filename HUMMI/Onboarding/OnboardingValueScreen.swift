@@ -52,7 +52,7 @@ struct OnboardingValueScreen: View {
 
     private var masthead: some View {
         VStack(spacing: Spacing.s) {
-            VoiceLogo(variant: .wordmark, tint: Brand.ink.opacity(0.9), height: 30)
+            HummiMark(size: 44)
             VStack(spacing: 0) {
                 Text("SING IT ROUGH.")
                     .foregroundStyle(Brand.ink)
@@ -106,19 +106,19 @@ struct OnboardingValueScreen: View {
             ? "Playing the studio version" : "Playing the raw recording"))
     }
 
-    /// The brand selection inversion: the active side is forest + lime.
+    /// The active side is an accent fill with a white label.
     private func indicatorChip(_ label: String, active: Bool) -> some View {
         Text(label)
             .font(.subheadline.weight(.semibold))
             .frame(maxWidth: .infinity, minHeight: 38)
             .background {
                 if active {
-                    Capsule().fill(Brand.forest)
+                    Capsule().fill(Brand.accent)
                 } else {
                     Capsule().fill(Brand.ink.opacity(0.06))
                 }
             }
-            .foregroundStyle(active ? Brand.lime : Brand.ink.opacity(0.6))
+            .foregroundStyle(active ? Brand.onAccent : Brand.ink.opacity(0.6))
             .animation(Motion.micro, value: active)
     }
 

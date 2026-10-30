@@ -20,7 +20,7 @@ struct StudioScreen: View {
     @State private var scrubFocus: Double? = nil
     @State private var tooltip: String?
     @State private var tooltipDismiss: Task<Void, Never>?
-    @State private var entered = false
+    @State private var headphones = HeadphoneMonitor()
     @AppStorage("studioCoachmarkCharacter") private var dismissedCharacterCoachmark = false
     @AppStorage("studioCoachmarkSwipe") private var dismissedSpaceCoachmark = false
     @AppStorage("studioCoachmarkPanel") private var dismissedPanelCoachmark = false
@@ -33,10 +33,17 @@ struct StudioScreen: View {
             ScrollView {
                 VStack(spacing: 0) {
                     playbackSection
+                    if !headphones.isConnected {
+                        headphoneHint
+                            .padding(.top, Spacing.s)
+                            .transition(.opacity)
+                    }
                     characterSection
                     spaceSection
                     panelRow
                 }
+                .animation(reduceMotion ? .none : Motion.standard,
+                           value: headphones.isConnected)
                 // Clears the floating tab pill so the panel row stays reachable.
                 .padding(.bottom, Spacing.xxl * 2.5)
                 // Centre the controls on wide (iPad / landscape) screens; the
@@ -49,14 +56,22 @@ struct StudioScreen: View {
             }
             .scrollIndicators(.hidden)
         }
-        .opacity(entered ? 1 : 0)
-        .onAppear { withAnimation(.easeOut(duration: 0.25)) { entered = true } }
         .overlay(alignment: .top) {
             HStack {
-                GlowPillButton(title: "Discard", tint: Color(white: 0.4),
-                               foreground: .white, feel: .destructive, compact: true) {
+                // Secondary action: plain text, no fill. Save is the one
+                // filled button on this screen.
+                Button {
+                    Haptics.shared.play(.light)
                     showDiscardAlert = true
+                } label: {
+                    Text("Discard")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .padding(.horizontal, Spacing.xs)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 
                 Spacer()
                 
@@ -71,10 +86,15 @@ struct StudioScreen: View {
             .frame(maxWidth: Spacing.contentMaxWidth)
             .frame(maxWidth: .infinity)
         }
-        .overlay {
-            if showDiscardAlert {
-                customDiscardAlert
+        .confirmationDialog("Discard this studio session?",
+                            isPresented: $showDiscardAlert, titleVisibility: .visible) {
+            Button("Discard Session", role: .destructive) {
+                Haptics.shared.notify(.warning)
+                onDiscard()
             }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("Your recording stays in your library. Only the voice and space choices here are lost.")
         }
         .sheet(isPresented: $showPanel) {
             StudioPanelSheet(viewModel: viewModel)
@@ -97,26 +117,28 @@ struct StudioScreen: View {
     private var playbackSection: some View {
         VStack(spacing: Spacing.s) {
             abToggle.padding(.top, Spacing.m)
+            StudioResultLine(report: viewModel.polishReport)
             waveform
                 .frame(maxWidth: 300)
                 .frame(height: 150)
             playbackControls
-            headphoneBanner.padding(.top, Spacing.xs)
         }
         .padding(.horizontal, Spacing.l)
     }
 
-    private var headphoneBanner: some View {
-        HStack(spacing: Spacing.xs) {
-            Image(systemName: "headphones")
-                .font(.caption.weight(.medium))
-            Text("Use headphones for the best studio experience")
-                .font(.caption.weight(.medium))
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, Spacing.m)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.15), in: Capsule())
+    /// One-line nudge toward headphones, sitting between the playback
+    /// controls and the character row. Brand lime on an adaptive capsule so
+    /// it reads on both the light and dark studio canvas; it removes itself
+    /// the moment headphones are actually plugged in.
+    private var headphoneHint: some View {
+        // A quiet hint, not a banner: secondary text, no fill or border.
+        Label("Use headphones for the truest studio sound", systemImage: "headphones")
+            .font(.footnote)
+            .foregroundStyle(StudioTheme.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, Spacing.l)
+        .accessibilityElement(children: .combine)
     }
 
     private var abToggle: some View {
@@ -145,7 +167,6 @@ struct StudioScreen: View {
                 .background {
                     if isOn {
                         Capsule().fill(.white)
-                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
                     }
                 }
                 .contentShape(Capsule())
@@ -210,7 +231,7 @@ struct StudioScreen: View {
                 coachPill("Tap any character to try a voice").padding(.horizontal, Spacing.l)
             }
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: Spacing.s) {
+                HStack(alignment: .top, spacing: Spacing.s) {
                     ForEach(Array(FilterLibrary.characters.enumerated()), id: \.element.id) { index, filter in
                         CharacterCard(filter: filter,
                                       isActive: viewModel.selectedCharacterID == filter.id,
@@ -241,7 +262,7 @@ struct StudioScreen: View {
                 coachPill("Combine with a space").padding(.horizontal, Spacing.l)
             }
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Spacing.m) {
+                HStack(spacing: Spacing.m) {
                     ForEach(Array(FilterLibrary.spaces.enumerated()), id: \.element.id) { index, filter in
                         SpaceTile(filter: filter,
                                   isActive: viewModel.selectedSpaceID == filter.id,
@@ -313,7 +334,7 @@ struct StudioScreen: View {
                         .foregroundStyle(StudioTheme.textTertiary)
                 }
                 .padding(Spacing.m)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(Brand.ink.opacity(0.05), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .buttonStyle(.plain)
             if !dismissedPanelCoachmark, dismissedSpaceCoachmark {
@@ -327,12 +348,10 @@ struct StudioScreen: View {
     // MARK: - Chrome
 
     private func coachPill(_ text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, Spacing.s)
-            .padding(.vertical, Spacing.xs)
-            .background(.ultraThinMaterial, in: Capsule())
+        // A one-time hint as plain secondary text — no floating chip.
+        Label(text, systemImage: "hand.tap")
+            .font(.footnote)
+            .foregroundStyle(StudioTheme.textSecondary)
     }
 
     /// Renders the final take with the shared top status strip — the same
@@ -346,8 +365,7 @@ struct StudioScreen: View {
             ToastManager.shared.show(message: "Preparing your take…", isProcessing: true)
             let ok = await viewModel.renderFinalStudioVersion()
             if ok {
-                ToastManager.shared.show(message: "Studio take ready", icon: "checkmark.circle.fill")
-                Haptics.shared.notify(.success)
+                ToastManager.shared.celebrate("Studio take saved")
                 onSaved()
             } else {
                 ToastManager.shared.hide()
@@ -368,83 +386,5 @@ struct StudioScreen: View {
     private func timeString(_ time: Double) -> String {
         let total = Int(time.rounded(.down))
         return String(format: "%d:%02d", total / 60, total % 60)
-    }
-    private var customDiscardAlert: some View {
-        ZStack {
-            // Dimming backdrop
-            Color.black.opacity(0.3)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        showDiscardAlert = false
-                    }
-                }
-            
-            // Popup Card
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Discard studio session?")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    
-                    Text("Your recording stays in your library. The filter choices here will be lost.")
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                
-                HStack(spacing: 12) {
-                    Button {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            showDiscardAlert = false
-                        }
-                    } label: {
-                        Text("Cancel")
-                            .font(.headline)
-                            .foregroundStyle(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.red, in: Capsule())
-                    }
-                    
-                    Button {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            showDiscardAlert = false
-                            onDiscard()
-                        }
-                    } label: {
-                        Text("Discard")
-                            .font(.headline)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color(.secondarySystemFill), in: Capsule())
-                    }
-                }
-            }
-            .padding(24)
-            .background {
-                ZStack(alignment: .top) {
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(.regularMaterial)
-                    
-                    Circle()
-                        .fill(Brand.lime)
-                        .frame(width: 120, height: 120)
-                        .blur(radius: 40)
-                        .offset(y: -60)
-                        .opacity(0.6)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                .shadow(color: .black.opacity(0.15), radius: 30, y: 15)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                }
-            }
-            .padding(.horizontal, 32)
-            .transition(.scale(scale: 0.95).combined(with: .opacity))
-        }
-        .zIndex(100)
     }
 }
