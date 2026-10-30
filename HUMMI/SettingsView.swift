@@ -24,6 +24,9 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.xl) {
+                    // Studio Pro — upgrade teaser when free, plan + manage when Pro.
+                    SettingsProCard()
+
                     section("Appearance") {
                         row(icon: "circle.lefthalf.filled", title: "Theme") {
                             Picker("", selection: $appTheme) {
@@ -96,8 +99,8 @@ struct SettingsView: View {
                     }
 
                     VStack(spacing: Spacing.xs) {
-                        VoiceLogo(variant: .wordmark, tint: Brand.ink.opacity(0.4), height: 26)
-                        Text("Studio \(appVersion)")
+                        HummiMark(size: 30)
+                        Text("Version \(appVersion)")
                             .font(.footnote)
                             .foregroundStyle(Brand.ink.opacity(0.35))
                     }
@@ -111,7 +114,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .background(Color(.systemBackground).ignoresSafeArea())
+        .background(Brand.canvas.ignoresSafeArea())
         .onChange(of: appTheme) { Haptics.shared.play(.light) }
         .onChange(of: appTransition) { Haptics.shared.play(.light) }
         .onChange(of: exportFormat) { Haptics.shared.play(.light) }
@@ -144,7 +147,7 @@ struct SettingsView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Brand.ink)
                     .frame(width: 44, height: 44)
-                    .background(Color(.systemBackground))
+                    .background(Brand.surface)
                     .clipShape(Circle())
                     .glassEffect(.regular.interactive(), in: .circle)
             }
@@ -164,7 +167,7 @@ struct SettingsView: View {
         .padding(.horizontal, Spacing.l)
         .padding(.top, Spacing.m)
         .padding(.bottom, Spacing.xs)
-        .background(Color(.systemBackground))
+        .background(Brand.surface)
     }
 
     // MARK: - Building blocks
@@ -209,7 +212,7 @@ struct SettingsView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Brand.ink)
                 .frame(width: 36, height: 36)
-                .background(Color(.systemBackground), in: Circle())
+                .background(Brand.surface, in: Circle())
             Text(title)
                 .font(.body.weight(.medium))
                 .foregroundStyle(Brand.ink)
